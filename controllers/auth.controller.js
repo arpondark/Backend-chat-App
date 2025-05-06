@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../lib/utils.js";
+import cloudinary from "../lib/cloudnary.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -60,37 +61,81 @@ export const signup = async (req, res) => {
 // Login route
 export const login = async (req, res) => {
   const { email, password } = req.body;
-  try{
+  try {
     const user = await User.findOne({ email });
-    if(!user) {
+    if (!user) {
       return res.status(401).json({
         message: "Invalid email or password",
       });
+    }
 
-     const isPasswordValid = await bcrypt.compare(password, user.password)
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
-     if(!isPasswordValid) {
+    if (!isPasswordValid) {
       return res.status(401).json({
         message: "Invalid email or password",
       });
-     }
-    generateToken(user._id, res);
+    }
+
+    const token = generateToken(user._id, res);
     res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
-      //token: token, // Use the generated token
-    }
-
-
-  }catch (error) {
+      token: token, // Use the generated token
+    });
+  } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
 // Logout route
-export const logout = (req, res) => {
-  res.send("logout routes");
+export const logout = async (req, res) => {
+  try {
+    res.cookie("jwt", "", { maxAge: 0 });
+    res.status(200).json({
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { profilePic } = req.body;
+    const userId = req.user._id;
+
+    if (!profilePic) {
+      return res.status(400).json({ message: "Profile pic is required" });
+    }
+
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePic: uploadResponse.secure_url },
+      { new: true }
+    );
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+
+export const checkAuth = (req, res) => {
+  try {
+    res.status(200).json(req.user);
+  } catch (error) {
+    console.log("Error in checkAuth controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+ 
