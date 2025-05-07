@@ -15,7 +15,7 @@ app.use(cookieParser());
 app.use(cors());
 
 app.use("/api/auth", authRoutes);
-pp.use("/api/message", messageRoutes);
+app.use("/api/message", messageRoutes);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
